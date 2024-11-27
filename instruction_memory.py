@@ -17,6 +17,8 @@ instruction_list = list()
 with open("ROM.txt", "r") as ROM:
     instruction_list = ROM.readlines()
 
-instruction_list = [line.strip() for line in instruction_list]
+instruction_list = [
+    line.strip() for line in instruction_list if not line.strip().startswith("#")
+]
 
 print(instruction_list)
