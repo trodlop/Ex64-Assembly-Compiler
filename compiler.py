@@ -15,6 +15,8 @@ op_codes = {
         "COMP<" : "01001",
         "COMP=" : "01010",
         "COMP!=" : "01011",
+        "LSH" : "01100",
+        "RSH" : "01101",
 
         "HLT" : "11111"
     }
@@ -182,7 +184,6 @@ def compile_MVE(assembly_instruction, i):
     else:
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-
 def compile_CLR(assembly_instruction, i):
 
     if assembly_instruction[-1] == "CONDITIONAL":
@@ -312,8 +313,10 @@ def compile_HLT(assembly_instruction, i):
 
     add_to_final_instruction_list(machine_instruction)
 
+
 def add_to_final_instruction_list(instruction):
     final_instructions.append(instruction) # Adds the passed finished machine code instruction to final instruction list
+
 
 def begin_compile():
 
