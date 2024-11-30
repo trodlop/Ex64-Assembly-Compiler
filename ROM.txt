@@ -1,6 +1,9 @@
+NUMTYPE = 0x
 
-# This should be ignored
+# comment
 
-test1
-test2
-test3
+# another comment
+
+LDI @1 1
+
+MVE @1 @2
