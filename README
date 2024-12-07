@@ -1,3 +1,12 @@
+This compiler is built in Python, and will compile Ex64 Assembly instructions into machine code for use in the Excel CPU. 
+
+How to use:
+To compile a file, run the compiler.py program. The program will ask for a file to compile (in the terminal), simply enter the relative file path. 
+
+The program will then create a file called output.txt in the same directory as the compiler file which contains the compiled instructions. 
+
+
+
 Excel 64bit Assembly (Ex64 Assembly):
 
 Assembly code begins with the topmost line defining the number format: NUMTYPE = 0b (for binary numbers), or NUMTYPE = 0x (for decimal numbers). Decimal values are converted to binary numbers when instructions are compiled to machine code. 
