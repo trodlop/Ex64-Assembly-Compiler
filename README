@@ -1,5 +1,7 @@
 Excel 32 Assembly:
 
+NOTE: You may look at the Ex64 Assembly reference spreadsheet to explore how the compiler converts the assembly code to machine code.
+
 Assembly code begins with the topmost line defining the number format: NUMTYPE = 0b (for binary numbers), or NUMTYPE = 0x (for decimal numbers). Decimal values are converted to binary numbers when instructions are compiled to machine code 
 
 Register addresses - syntaxed as an '@' followed by an 8bit number. The value stored in a register can be passed as the register address in an instruction. It is prefixed by 'REF' (referencing the value stored in an address), for example, REF@1, would pass the value stored in register 1. If there is a 5 in register 1, the register address would be REF@1 or the 5th register
