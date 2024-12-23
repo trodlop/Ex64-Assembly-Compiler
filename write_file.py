@@ -8,5 +8,3 @@ def write_output_file(array):
 
         for item in array:
             file.write(f"{item}\n")  # Write each item followed by a newline
-
-        

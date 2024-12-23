@@ -7,7 +7,7 @@ final_instructions = list()
 op_codes = {
         "NOP" : "00000",
         "LDI" : "00001",
-        "MVE" : "00010",
+        "CPY" : "00010",
         "ADD" : "00011",
         "SUB" : "00100",
         "MUL" : "00101",
@@ -138,53 +138,87 @@ def check_valid_value(value, instruction, i):
             exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{instruction[1]}, immediate value must be a valid 16bit binary number")
 
 
+def add_opcode(instruction):
+
+    op_code = ""
+
+    try:
+        op_code += op_codes[f"{instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    except:
+        exit(f"Error in compiling: {instruction} is not a valid opcode")
+
+    return op_code
+
+def add_register(register):
+
+    final_string = ""
+    final_string += "1"
+    final_string += "0000000"
+
+    if number_type == "0b" and register[0] == "@": # Checks if the number type is binary
+        final_string += "0"
+        final_string += register[1:] # Retrieves the 8bit address
+    elif number_type == "0b" and register[:3] == "REF":
+        final_string += "1"
+        final_string += register[4:] # Retrieves the 8bit address
+
+    elif number_type == "0x" and register[0] == "@": # Checks if the number type is decimal
+        final_string += "0"
+        final_string += bin(int(register[1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+    elif number_type == "0x" and register[:3] == "REF": # Checks if the number type is decimal
+        final_string += "1"
+        final_string += bin(int(register[4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+
+    return final_string
+
+def add_value(value):
+
+    final_string = ""
+
+    final_string += "0" # Adds immediate value flag to machine code instruction
+
+    if number_type == "0b": # Checks if the number type is binary
+        final_string += value # Retrieves the 16bit value
+
+    elif number_type == "0x": # Checks if the number type is decimal
+        final_string += bin(int(value))[2:].zfill(16) # Converts the denary address to an 16bit binary number
+
+    return final_string
+
+def add_blank_bits(N):
+
+    final_string = ""
+
+    final_string += ("0" * N)
+
+    return final_string
+
+
 def compile_NOP(assembly_instruction, i):
 
     if len(assembly_instruction) > 1: # Checks if NOP is incorrectly syntaxed
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[1:]}, NOP instructions must not be followed by any values")
 
     else: # NOP is correctly syntaxed
-        machine_instruction = "0" * 64 # NOP instructions are just all 0s
+        
+        machine_instruction = add_blank_bits(64)
 
         final_instructions.append(machine_instruction) # Adds the finished machine code instruction to final instruction list
 
 
 def compile_LDI(assembly_instruction, i):
 
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction = add_opcode(assembly_instruction)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[1]) # Adds register
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-    if number_type == "0b" and assembly_instruction[1][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[1][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[1][4:] # Retrieves the 8bit address
-
-    elif number_type == "0x" and assembly_instruction[1][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[1][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[1][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+    machine_instruction += add_blank_bits(17) # Adds padding bits
 
     check_valid_value(assembly_instruction[2], assembly_instruction, i) # Checks that the immediate value is valid
+    machine_instruction += add_value(assembly_instruction[2]) # Adds value
 
-    machine_instruction += "0" # Adds immediate value flag to machine code instruction
-
-    if number_type == "0b": # Checks if the number type is binary
-        machine_instruction += assembly_instruction[2] # Retrieves the 16bit value
-
-    elif number_type == "0x": # Checks if the number type is decimal
-        machine_instruction += bin(int(assembly_instruction[2]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "1010000"
 
     if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -200,51 +234,21 @@ def compile_LDI(assembly_instruction, i):
     else:
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-def compile_MVE(assembly_instruction, i):
+def compile_CPY(assembly_instruction, i):
 
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[1]) # Adds register 1
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-    if number_type == "0b" and assembly_instruction[1][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[1][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[1][4:] # Retrieves the 8bit address
-
-    elif number_type == "0x" and assembly_instruction[1][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[1][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[1][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+    machine_instruction += add_blank_bits(17)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[2]) # Adds register 2
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-    if number_type == "0b" and assembly_instruction[2][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[2][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[2][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[2][4:] # Retrieves the 8bit address
-
-    elif number_type == "0x" and assembly_instruction[2][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[2][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[2][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[2][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "1010000"
 
     if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -278,77 +282,18 @@ def compile_arithmetic(assembly_instruction, i):
 
     for j in range(2):
 
-        if assembly_instruction[j+1][0] == "@":
+        if assembly_instruction[j+1][0] == "@" or assembly_instruction[j+1][:3] == "REF":
             check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        elif assembly_instruction[j+1][:3] == "REF":
-
-            assembly_instruction[j+1] = assembly_instruction[j+1][3:]
-
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += "1"
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += "1"
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+            machine_instruction += add_register(assembly_instruction[j+1]) # Adds register
 
         else:
             check_valid_value(assembly_instruction[j+1], assembly_instruction, j) # Checks that the immediate value is valid
+            machine_instruction += add_value(assembly_instruction[j+1]) # Adds value
 
-            if number_type == "0b": # Checks if the number type is binary
-                value = assembly_instruction[j+1] # Retrieves the 16bit value
+    check_valid_register(assembly_instruction[3], assembly_instruction, i)
+    machine_instruction += add_register(assembly_instruction[3])
 
-            elif number_type == "0x": # Checks if the number type is decimal
-                value = bin(int(assembly_instruction[j+1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-            machine_instruction += "0" # Adds immediate value flag to machine code instruction
-            machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-    if assembly_instruction[3][0] == "@":
-        check_valid_register(assembly_instruction[3], assembly_instruction, i) # Checks that the register address is valid
-
-        machine_instruction += "0"
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[3][:3] == "REF":
-        assembly_instruction[3] = assembly_instruction[3][3:]
-        check_valid_register(assembly_instruction[3], assembly_instruction, i) # Checks that the register address is valid
-
-        machine_instruction += "1"
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[3]}, syntax error")
-
-    machine_instruction += "0000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "1111000" # Adds remaining bits to keep instruction at 64bits
 
     if len(assembly_instruction) > 4 and assembly_instruction[4] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -369,9 +314,9 @@ def compile_SCF(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction) # Converts the opcode to machine code and adds it to the machine code instruction
 
-    machine_instruction += "0" *57
+    machine_instruction += add_blank_bits(57)
 
     if len(assembly_instruction) == 2:
 
@@ -394,436 +339,43 @@ def compile_SCF(assembly_instruction, i):
 
 
 def compile_CMP(assembly_instruction, i):
+
+    machine_instruction = ""
+
     if assembly_instruction[0] == "CMP" and assembly_instruction[2] == ">":
-        compile_CMP_greater(assembly_instruction, i)
+        machine_instruction += op_codes[f"{assembly_instruction[0]}>"] # Converts the opcode to machine code and adds it to the machine code instruction
     elif assembly_instruction[0] == "CMP" and assembly_instruction[2] == "<":
-        compile_CMP_less(assembly_instruction, i)
+        machine_instruction += op_codes[f"{assembly_instruction[0]}<"] # Converts the opcode to machine code and adds it to the machine code instruction
     elif assembly_instruction[0] == "CMP" and assembly_instruction[2] == "=":
-        compile_CMP_equal(assembly_instruction, i)
+        machine_instruction += op_codes[f"{assembly_instruction[0]}="] # Converts the opcode to machine code and adds it to the machine code instruction
     elif assembly_instruction[0] == "CMP" and assembly_instruction[2] == "!=":
-        compile_CMP_nequal(assembly_instruction, i)
+        machine_instruction += op_codes[f"{assembly_instruction[0]}!="] # Converts the opcode to machine code and adds it to the machine code instruction
     else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, Syntax error")
+        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, Syntax error:\nEg. CMP @1 = @2")
 
-def compile_CMP_greater(assembly_instruction, i):
-    
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}>"] # Converts the opcode to machine code and adds it to the machine code instruction
-
-    if assembly_instruction[1][0] == "@":
+    if assembly_instruction[1][0] == "@" or assembly_instruction[1][:3] == "REF":
 
         check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[1][:3] == "REF":
-
-        assembly_instruction[1] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+        machine_instruction += add_register(assembly_instruction[1])
         
     else:
 
         check_valid_value(assembly_instruction[1], assembly_instruction, i)
+        machine_instruction += add_value(assembly_instruction[1])
 
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[1] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    if assembly_instruction[3][0] == "@":
+    if assembly_instruction[3][0] == "@" or assembly_instruction[3][:3] == "REF":
 
         check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[3][:3] == "REF":
-
-        assembly_instruction[3] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-
-        check_valid_value(assembly_instruction[3], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[3] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[3]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "00000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if assembly_instruction[4] == "1":
-        machine_instruction += "1"
-
-    elif assembly_instruction[4] == "0":
-        machine_instruction += "0"
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[4]}, CMP operations must have the condiional flag value explicitly stated (either 0 or 1)")
-
-    if len(assembly_instruction) > 5 and assembly_instruction[5] == "CONDITIONAL":
-        machine_instruction += "1"
-        add_to_final_instruction_list(machine_instruction)
-
-    elif len(assembly_instruction) == 5:
-        machine_instruction += "0"
-        add_to_final_instruction_list(machine_instruction)
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
-
-def compile_CMP_less(assembly_instruction, i):
-    
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}<"] # Converts the opcode to machine code and adds it to the machine code instruction
-
-    if assembly_instruction[1][0] == "@":
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[1][:3] == "REF":
-
-        assembly_instruction[1] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-
-        check_valid_value(assembly_instruction[1], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[1] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    if assembly_instruction[3][0] == "@":
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[3][:3] == "REF":
-
-        assembly_instruction[3] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-
-        check_valid_value(assembly_instruction[3], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[3] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[3]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "00000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if assembly_instruction[4] == "1":
-        machine_instruction += "1"
-
-    elif assembly_instruction[4] == "0":
-        machine_instruction += "0"
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[4]}, CMP operations must have the condiional flag value explicitly stated (either 0 or 1)")
-
-    if len(assembly_instruction) > 5 and assembly_instruction[5] == "CONDITIONAL":
-        machine_instruction += "1"
-        add_to_final_instruction_list(machine_instruction)
-
-    elif len(assembly_instruction) == 5:
-        machine_instruction += "0"
-        add_to_final_instruction_list(machine_instruction)
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
-
-def compile_CMP_equal(assembly_instruction, i):
-    
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}="] # Converts the opcode to machine code and adds it to the machine code instruction
-
-    if assembly_instruction[1][0] == "@":
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[1][:3] == "REF":
-
-        assembly_instruction[1] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+        machine_instruction += add_register(assembly_instruction[3])
         
     else:
 
-        check_valid_value(assembly_instruction[1], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[1] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    if assembly_instruction[3][0] == "@":
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[3][:3] == "REF":
-
-        assembly_instruction[3] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-
         check_valid_value(assembly_instruction[3], assembly_instruction, i)
+        machine_instruction += add_value(assembly_instruction[3])
 
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[3] # Retrieves the 16bit value
+    machine_instruction += add_blank_bits(17)
 
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[3]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "00000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if assembly_instruction[4] == "1":
-        machine_instruction += "1"
-
-    elif assembly_instruction[4] == "0":
-        machine_instruction += "0"
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[4]}, CMP operations must have the condiional flag value explicitly stated (either 0 or 1)")
-
-    if len(assembly_instruction) > 5 and assembly_instruction[5] == "CONDITIONAL":
-        machine_instruction += "1"
-        add_to_final_instruction_list(machine_instruction)
-
-    elif len(assembly_instruction) == 5:
-        machine_instruction += "0"
-        add_to_final_instruction_list(machine_instruction)
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
-
-def compile_CMP_nequal(assembly_instruction, i):
-    
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}!="] # Converts the opcode to machine code and adds it to the machine code instruction
-
-    if assembly_instruction[1][0] == "@":
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[1][:3] == "REF":
-
-        assembly_instruction[1] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[1], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-        
-    else:
-
-        check_valid_value(assembly_instruction[1], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[1] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    if assembly_instruction[3][0] == "@":
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    elif assembly_instruction[3][:3] == "REF":
-
-        assembly_instruction[3] = assembly_instruction[1][3:]
-
-        check_valid_register(assembly_instruction[3], assembly_instruction, i)
-
-        machine_instruction += "1" # Adds register address flag to machine code instruction
-        machine_instruction += "00000001" # Adds 8bits to the front of the address to maintain instruction length
-
-        if number_type == "0b": # Checks if the number type is binary
-            machine_instruction += assembly_instruction[3][1:] # Retrieves the 8bit address
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            machine_instruction += bin(int(assembly_instruction[3][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    else:
-
-        check_valid_value(assembly_instruction[3], assembly_instruction, i)
-
-        if number_type == "0b": # Checks if the number type is binary
-            value = assembly_instruction[3] # Retrieves the 16bit value
-
-        elif number_type == "0x": # Checks if the number type is decimal
-            value = bin(int(assembly_instruction[3]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-        machine_instruction += "0" # Adds immediate value flag to machine code instruction
-        machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "00000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "110100"
 
     if assembly_instruction[4] == "1":
         machine_instruction += "1"
@@ -850,47 +402,23 @@ def compile_LSH(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[1])
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
+    machine_instruction += add_blank_bits(34)
 
-    if number_type == "0b" and assembly_instruction[1][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[1][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[1][4:] # Retrieves the 8bit address
+    machine_instruction += "1001000"
 
-    elif number_type == "0x" and assembly_instruction[1][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[1][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[1][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    check_valid_value(assembly_instruction[2], assembly_instruction, i) # Checks that the immediate value is valid
-
-    machine_instruction += "0" # Adds immediate value flag to machine code instruction
-
-    if number_type == "0b": # Checks if the number type is binary
-        machine_instruction += assembly_instruction[2] # Retrieves the 16bit value
-
-    elif number_type == "0x": # Checks if the number type is decimal
-        machine_instruction += bin(int(assembly_instruction[2]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
+    if len(assembly_instruction) > 2 and assembly_instruction[2] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-    elif len(assembly_instruction) > 3 and assembly_instruction[3] == "CONDITIONAL":
+    elif len(assembly_instruction) > 2 and assembly_instruction[2] == "CONDITIONAL":
         machine_instruction += "1"
         add_to_final_instruction_list(machine_instruction)
 
-    elif len(assembly_instruction) == 3:
+    elif len(assembly_instruction) == 2:
         machine_instruction += "0"
         add_to_final_instruction_list(machine_instruction)
 
@@ -901,47 +429,23 @@ def compile_RSH(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[1])
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
+    machine_instruction += add_blank_bits(34)
 
-    if number_type == "0b" and assembly_instruction[1][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[1][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[1][4:] # Retrieves the 8bit address
+    machine_instruction += "1001000"
 
-    elif number_type == "0x" and assembly_instruction[1][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[1][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[1][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    check_valid_value(assembly_instruction[2], assembly_instruction, i) # Checks that the immediate value is valid
-
-    machine_instruction += "0" # Adds immediate value flag to machine code instruction
-
-    if number_type == "0b": # Checks if the number type is binary
-        machine_instruction += assembly_instruction[2] # Retrieves the 16bit value
-
-    elif number_type == "0x": # Checks if the number type is decimal
-        machine_instruction += bin(int(assembly_instruction[2]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
+    if len(assembly_instruction) > 2 and assembly_instruction[2] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-    elif len(assembly_instruction) > 3 and assembly_instruction[3] == "CONDITIONAL":
+    elif len(assembly_instruction) > 2 and assembly_instruction[2] == "CONDITIONAL":
         machine_instruction += "1"
         add_to_final_instruction_list(machine_instruction)
 
-    elif len(assembly_instruction) == 3:
+    elif len(assembly_instruction) == 2:
         machine_instruction += "0"
         add_to_final_instruction_list(machine_instruction)
 
@@ -1056,58 +560,25 @@ def compile_RJUMP(assembly_instruction, i):
 
 
 def compile_NOT(assembly_instruction, i):
-    print("Compiled")
-
-def compile_AND(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
-    for j in range(2):
+    if assembly_instruction[1][0] == "@" or assembly_instruction[1][:3] == "REF":
+        check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+        machine_instruction += add_register(assembly_instruction[1])
 
-        if assembly_instruction[j+1][0] == "@":
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
+    else:
+        check_valid_value(assembly_instruction[1], assembly_instruction, i) # Checks that the immediate value is valid
+        machine_instruction += add_value(assembly_instruction[1])
 
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
+    machine_instruction += add_blank_bits(17)
 
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
+    check_valid_register(assembly_instruction[2], assembly_instruction, i)
+    machine_instruction += add_register(assembly_instruction[2])
 
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        elif assembly_instruction[j+1][:3] == "REF":
-
-            assembly_instruction[j+1] = assembly_instruction[j+1][3:]
-
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += "1"
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += "1"
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        else:
-            check_valid_value(assembly_instruction[j+1], assembly_instruction, j) # Checks that the immediate value is valid
-
-            if number_type == "0b": # Checks if the number type is binary
-                value = assembly_instruction[j+1] # Retrieves the 16bit value
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                value = bin(int(assembly_instruction[j+1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-            machine_instruction += "0" # Adds immediate value flag to machine code instruction
-            machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "1011000"
 
     if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -1123,130 +594,32 @@ def compile_AND(assembly_instruction, i):
     else:
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-def compile_OR(assembly_instruction, i):
-     
+def compile_AND_OR_XOR(assembly_instruction, i):
+
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
-    for j in range(2):
+    for j in range(3):
 
-        if assembly_instruction[j+1][0] == "@":
+        if assembly_instruction[j+1][0] == "@" or assembly_instruction[j+1][:3] == "REF":
             check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        elif assembly_instruction[j+1][:3] == "REF":
-
-            assembly_instruction[j+1] = assembly_instruction[j+1][3:]
-
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += "1"
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += "1"
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
+            machine_instruction += add_register(assembly_instruction[j+1])
 
         else:
             check_valid_value(assembly_instruction[j+1], assembly_instruction, j) # Checks that the immediate value is valid
+            machine_instruction += add_value(assembly_instruction[j+1])
 
-            if number_type == "0b": # Checks if the number type is binary
-                value = assembly_instruction[j+1] # Retrieves the 16bit value
+    machine_instruction += "1111000"
 
-            elif number_type == "0x": # Checks if the number type is decimal
-                value = bin(int(assembly_instruction[j+1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-            machine_instruction += "0" # Adds immediate value flag to machine code instruction
-            machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
+    if len(assembly_instruction) > 4 and assembly_instruction[4] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
 
-    elif len(assembly_instruction) > 3 and assembly_instruction[3] == "CONDITIONAL":
+    elif len(assembly_instruction) > 4 and assembly_instruction[4] == "CONDITIONAL":
         machine_instruction += "1"
         add_to_final_instruction_list(machine_instruction)
 
-    elif len(assembly_instruction) == 3:
-        machine_instruction += "0"
-        add_to_final_instruction_list(machine_instruction)
-
-    else:
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
-
-def compile_XOR(assembly_instruction, i):
-        
-    machine_instruction = ""
-
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
-
-    for j in range(2):
-
-        if assembly_instruction[j+1][0] == "@":
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "00000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        elif assembly_instruction[j+1][:3] == "REF":
-
-            assembly_instruction[j+1] = assembly_instruction[j+1][3:]
-
-            check_valid_register(assembly_instruction[j+1], assembly_instruction, j) # Checks that the register address is valid
-
-            machine_instruction += "1" # Adds register address flag to machine code instruction
-            machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-            if number_type == "0b": # Checks if the number type is binary
-                machine_instruction += "1"
-                machine_instruction += assembly_instruction[j+1][1:] # Retrieves the 8bit address
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                machine_instruction += "1"
-                machine_instruction += bin(int(assembly_instruction[j+1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-        else:
-            check_valid_value(assembly_instruction[j+1], assembly_instruction, j) # Checks that the immediate value is valid
-
-            if number_type == "0b": # Checks if the number type is binary
-                value = assembly_instruction[j+1] # Retrieves the 16bit value
-
-            elif number_type == "0x": # Checks if the number type is decimal
-                value = bin(int(assembly_instruction[j+1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
-
-            machine_instruction += "0" # Adds immediate value flag to machine code instruction
-            machine_instruction += f"{value}" # Adds 16bit value to machine code instruction
-
-    machine_instruction += "000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
-
-    if len(assembly_instruction) > 3 and assembly_instruction[3] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
-        exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
-
-    elif len(assembly_instruction) > 3 and assembly_instruction[3] == "CONDITIONAL":
-        machine_instruction += "1"
-        add_to_final_instruction_list(machine_instruction)
-
-    elif len(assembly_instruction) == 3:
+    elif len(assembly_instruction) == 4:
         machine_instruction += "0"
         add_to_final_instruction_list(machine_instruction)
 
@@ -1258,28 +631,14 @@ def compile_PCI(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
+
+    machine_instruction += add_blank_bits(34)
 
     check_valid_register(assembly_instruction[1], assembly_instruction, i) # Checks that the register address is valid
+    machine_instruction += add_register(assembly_instruction[1])
 
-    machine_instruction += "1" # Adds register address flag to machine code instruction
-    machine_instruction += "0000000" # Adds 8bits to the front of the address to maintain instruction length
-
-    if number_type == "0b" and assembly_instruction[1][0] == "@": # Checks if the number type is binary
-        machine_instruction += "0"
-        machine_instruction += assembly_instruction[1][1:] # Retrieves the 8bit address
-    elif number_type == "0b" and assembly_instruction[1][:3] == "REF":
-        machine_instruction += "1"
-        machine_instruction += assembly_instruction[1][4:] # Retrieves the 8bit address
-
-    elif number_type == "0x" and assembly_instruction[1][0] == "@": # Checks if the number type is decimal
-        machine_instruction += "0"
-        machine_instruction += bin(int(assembly_instruction[1][1:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-    elif number_type == "0x" and assembly_instruction[1][:3] == "REF": # Checks if the number type is decimal
-        machine_instruction += "1"
-        machine_instruction += bin(int(assembly_instruction[1][4:]))[2:].zfill(8) # Converts the denary address to an 8bit binary number
-
-    machine_instruction += "00000000000000000000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += "0010000"
 
     if len(assembly_instruction) > 2 and assembly_instruction[2] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -1300,9 +659,9 @@ def compile_HLT(assembly_instruction, i):
     
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction)
 
-    machine_instruction += "0" *58
+    machine_instruction += add_blank_bits(58)
 
     if len(assembly_instruction) == 1:
         machine_instruction += "0"
@@ -1343,8 +702,8 @@ def compile():
         elif assembly_instruction[0] == "LDI":
             compile_LDI(assembly_instruction, i)
 
-        elif assembly_instruction[0] == "MVE":
-            compile_MVE(assembly_instruction, i)
+        elif assembly_instruction[0] == "CPY":
+            compile_CPY(assembly_instruction, i)
 
         elif assembly_instruction[0] == "CLR":
             compile_CLR(assembly_instruction, i)
@@ -1387,13 +746,13 @@ def compile():
             compile_NOT(assembly_instruction, i)
 
         elif assembly_instruction[0] == "AND":
-            compile_AND(assembly_instruction, i)
+            compile_AND_OR_XOR(assembly_instruction, i)
 
         elif assembly_instruction[0] == "OR":
-            compile_OR(assembly_instruction, i)
+            compile_AND_OR_XOR(assembly_instruction, i)
 
         elif assembly_instruction[0] == "XOR":
-            compile_XOR(assembly_instruction, i)
+            compile_AND_OR_XOR(assembly_instruction, i)
 
 
         elif assembly_instruction[0] == "PCI":
@@ -1404,12 +763,22 @@ def compile():
             compile_HLT(assembly_instruction, i)
 
         else: # Checks for invalid operation code
-            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[0]} is not a valid operation")
+            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction[0]} is not a valid operation (see Excel spreadsheet for opcodes)")
     
 compile()
 
 print("")
 for i in range(len(final_instructions)):
     print(f"{i+1} :\t{final_instructions[i]}")
+print("")
+
+if len(final_instructions) > instruction_memory:
+    print(f"The maximum number of instructions the Excel CPU can hold is {instruction_memory}. This instruction list is longer than {instruction_memory} ({len(final_instructions)}). Any instructions past the {instruction_memory} mark will be removed from the final machine code instructions.")
+    while len(final_instructions) > instruction_memory:
+        final_instructions.pop()  # Add NOP instructions until final_instruction length reaches instruction memory length (this is because all instruction memory registers NEED to be filled in the CPU)
+
+elif len(final_instructions) < instruction_memory:
+    while len(final_instructions) < instruction_memory:
+        final_instructions.append("0" * 64)  # Add NOP instructions until final_instruction length reaches instruction memory length (this is because all instruction memory registers NEED to be filled in the CPU)
 
 wf.write_output_file(final_instructions)
