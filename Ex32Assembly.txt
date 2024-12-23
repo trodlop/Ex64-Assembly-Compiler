@@ -1,0 +1,49 @@
+Excel 32 Assembly:
+
+Assembly code begins with the topmost line defining the number format: NUMTYPE = 0b (for binary numbers), or NUMTYPE = 0x (for decimal numbers). Decimal values are converted to binary numbers when instructions are compiled to machine code 
+
+Register addresses - syntaxed as an '@' followed by an 8bit number. The value stored in a register can be passed as the register address in an instruction. It is prefixed by 'REF' (referencing the value stored in an address), for example, REF@1, would pass the value stored in register 1. If there is a 5 in register 1, the register address would be REF@1 or the 5th register
+
+Immediate values - a plain 16bit number with no other syntaxing
+
+LDI - loads an immediate value into a register. Takes 2 arguments: the first is a register address in any of the formats, and the second is an immediate value
+
+CPY - copies a value from 1 register into another. Takes 2 arguments: both are register addresses
+
+ADD - sums 2 numbers and saves the result. Takes 3 arguments: a the first 2 are both either a register address or an immediate value, the third is a register address. r3 = r1 + r2
+
+SUB - subtracts 2 numbers and saves the result. Takes 3 arguments: a the first 2 are both either a register address or an immediate value, the third is a register address. r3 = r1 - r2
+
+MUL - multiplies 2 numbers and saves the result. Takes 3 arguments: a the first 2 are both either a register address or an immediate value, the third is a register address. r3 = r1 * r2
+
+DIV - divides 2 numbers and saves the result. Takes 3 arguments: a the first 2 are both either a register address or an immediate value, the third is a register address. r3 = r1 / r2
+
+SCF - sets the conditional flag bit in the cpu to either 1 or 0. Only takes 1 argument: either a 0 or a 1 (the state of the conditional flag)
+
+CMP - performs a comparison between 2 values, and if the comparison returns true will set the conditional flag to the passed value. Takes 4 arguments: the first and third are either a register address or an immediate value. The second is the type of comparison. The fourth is the state of the conditional flag if the comparison returns true. There are 4 comparisons: >, <, =, !=
+
+LSH - shifts all the bits in a register 1 place to the left. Only takes 1 argument: the register address
+
+RSH - shifts all the bits in a register 1 place to the right. Only takes 1 argument: the register address
+
+JUMP - jumps to the passed instruction number. Takes 1 argument: an immediate value (note that while this value must be a valid 16bit binary number, there is still an upper limit on the instruction number of 1024)
+
+RJUMP - jumps to +- the passed value relative to the current instruction number. Takes 1 argument: an immediate value (note that while this value must be a valid 16bit binary number, there is still an upper limit on the instruction number of 1024). This immediate value is prefixed by either ‘+’ for jumping forward a certain number of places, or ‘-‘ for jumping back a certain number of places
+
+NOT - performs a logical not operation, and saves the result. Takes 2 arguments, the first is either a register address or an immediate value. The second is a register address 
+
+AND - performs a logical and operation, and saves the result. Takes 3 arguments, the first 2 are either register addresses or immediate values. The third is a register address 
+
+OR - performs a logical or operation, and saves the result. Takes 3 arguments, the first 2 are either register addresses or immediate values. The third is a register address 
+
+XOR - performs a logical xor operation, and saves the result. Takes 3 arguments, the first 2 are either register addresses or immediate values. The third is a register address 
+
+HLT - halts the program. Takes no other arguments
+
+NOP - does nothing. Takes no other arguments
+
+All instructions can be followed by 'CONDITIONAL' (with the exception of NOP), which converts the instruction into a conditional instruction. This instruction will now only run if and only if the conditional flag is true (or 1)
+
+Comments can be added by simply adding a '#' at the beginning of the line
+
+All instructions MUST NOT have any characters in front of them (including spaces and indents). In the future I will add indentation to the assembly language allowing you to indent code blocks.

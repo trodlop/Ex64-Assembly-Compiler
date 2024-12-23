@@ -457,29 +457,30 @@ def compile_JUMP(assembly_instruction, i):
 
     machine_instruction = ""
 
-    machine_instruction += op_codes[f"{assembly_instruction[0]}"] # Converts the opcode to machine code and adds it to the machine code instruction
+    machine_instruction += add_opcode(assembly_instruction[0]) # Converts the opcode to machine code and adds it to the machine code instruction
 
     check_valid_value(assembly_instruction[1], assembly_instruction, i) # Checks that the immediate value is valid
 
     machine_instruction += "0" # Adds immediate value flag to machine code instruction
 
     if number_type == "0b": # Checks if the number type is binary
+
         if assembly_instruction[1][:6] == "000000":
-            
             machine_instruction += assembly_instruction[1] # Retrieves the 16bit value
 
         else:
-            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between 0 and 1023)")
+            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between  0000000000000000 and 0000001111111111)")
 
     elif number_type == "0x": # Checks if the number type is decimal
         if int(assembly_instruction[1]) >= 0 and int(assembly_instruction[1]) < 1024:
-
             machine_instruction += bin(int(assembly_instruction[1]))[2:].zfill(16) # Converts the denary address to an 16bit binary number
 
         else:
             exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between 0 and 1023)")
 
-    machine_instruction += "00000000000000000000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += add_blank_bits(34)
+
+    machine_instruction += "1000000"
 
     if len(assembly_instruction) > 2 and assembly_instruction[2] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
@@ -528,7 +529,7 @@ def compile_RJUMP(assembly_instruction, i):
             machine_instruction += assembly_instruction[1][6:] # Retrieves the 16bit value
 
         else:
-            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between 0 and 1023)")
+            exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between  0000000000000000 and 0000001111111111)")
 
     elif number_type == "0x": # Checks if the number type is decimal
         if int(assembly_instruction[1]) >= 0 and int(assembly_instruction[1]) < 1024:
@@ -542,7 +543,9 @@ def compile_RJUMP(assembly_instruction, i):
         else:
             exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, program counter value must be a 10bit number (between 0 and 1023)")
 
-    machine_instruction += "00000000000000000000000000000000000000000" # Adds remaining bits to keep instruction at 64bits
+    machine_instruction += add_blank_bits(34)
+
+    machine_instruction += "1000000"
 
     if len(assembly_instruction) > 2 and assembly_instruction[2] != "CONDITIONAL": # Checks for syntax error in CONDITIONAL instruction
         exit(f"Error in compiling, line {i + 1} - in {inst.instruction_list[i]},\n{assembly_instruction}, syntax error")
