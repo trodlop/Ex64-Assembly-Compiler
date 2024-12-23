@@ -47,3 +47,6 @@ All instructions can be followed by 'CONDITIONAL' (with the exception of NOP), w
 Comments can be added by simply adding a '#' at the beginning of the line
 
 All instructions MUST NOT have any characters in front of them (including spaces and indents). In the future I will add indentation to the assembly language allowing you to indent code blocks.
+
+An example program is provided (called example.txt)...
+To compile a program, run compiler.py (this will bring up a prompt on the terminal to input the file you want to compile, NOTE: must be a .txt file). The compiled program will be outputted as a new .txt file called output.txt in the same directory as the compiler
